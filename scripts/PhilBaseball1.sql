@@ -7,10 +7,30 @@ select *
 from people
 
 -- Q1. What range of years for baseball games played does the provided database cover?
-
+select min(span_first),
+max(span_last)
+from homegames;
+-- This works, but look into getting just the years here with a cast()
+-- Goes from 1871-05-04 to 2016-10-02
 
 /* Q2. Find the name and height of the shortest player in the database. 
 How many games did he play in? What is the name of the team for which he played? */
+select p.playerid,
+p.namefirst,
+p.namelast,
+p.height,
+a.teamid,
+a.yearid
+from people as p
+/* inner join managershalf as mh
+on p.playerid = mh.playerid
+inner join teams as t
+on mh.teamid = t.teamid */
+inner join appearances as a
+on p.playerid = a.playerid
+order by height asc;
+-- Eddie Gaedel, who was "43" tall? Played for SLA in 1951
+-- Any way to also tie in the teams table so we can get the team name??
 
 /* Q3. Find all players in the database who played at Vanderbilt University. 
 Create a list showing each player’s first and last names as well as the 
@@ -18,11 +38,43 @@ total salary they earned in the major leagues. Sort this list in descending
 order by the total salary earned. Which Vanderbilt player earned the most 
 money in the majors? */
 
+select cp.playerid,
+p.namefirst,
+p.namelast,
+sum(s2.salary)
+from collegeplaying as cp
+inner join schools as s1
+on cp.schoolid = s1.schoolid
+inner join people as p
+on cp.playerid = p.playerid
+inner join salaries as s2
+on p.playerid = s2.playerid
+where s1.schoolname ilike '%vander%'
+group by cp.playerid, p.namefirst, p.namelast
+order by sum(s2.salary) desc
+-- David Price earned $245,553,888 playing baseball??? That seems insane but good for him
+
 /* Q4. Using the fielding table, group players into three groups based 
 on their position: label players with position OF as "Outfield", those 
 with position "SS", "1B", "2B", and "3B" as "Infield", and those with 
 position "P" or "C" as "Battery". Determine the number of putouts made 
 by each of these three groups in 2016. */
+
+select count(playerid) as Total_players,
+sum(po) as Total_putouts,
+sum(po)/count(playerid) as Putouts_per_player,
+-- We are looking at the Pos column, which says player position
+	case when pos = 'OF' then 'Outfield'
+		when pos = 'SS' or pos = '1B' or pos = '2B' or pos = '3B' then 'Infield'
+		when pos = 'P' or pos = 'C' then 'Battery' 
+		else 'Other' end as position
+		-- Nice, no others when this query is run!
+from fielding
+where yearid = 2016
+group by position
+order by total_putouts desc
+-- I hope I got this one right! 58934 Infield PO's, 41424 Battery PO's, 29560 Outfield PO's
+-- Outfield players almost as efficient as infield players for achieving PO's, whatever those are.
 
 /* Q5. Find the average number of strikeouts per game by decade since 1920. 
 Round the numbers you report to 2 decimal places. Do the same for home runs 
