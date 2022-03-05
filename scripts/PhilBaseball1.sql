@@ -94,6 +94,7 @@ order by avg(hr) desc;
 -- The 1960's, 70's, 80's were the best times to be a pitcher.
 -- Somehow, the 1960's were also the best times to hit homers. 
 -- You would think the Barry Bonds/Sosa/McGuire era would be it
+-- Amanda says go back to this one use the teams table!!
 
 /* Q6. Find the player who had the most success stealing bases in 2016, 
 where success is measured as the percentage of stolen base attempts which 
@@ -224,7 +225,7 @@ max(hr)
 from people as p
 left join batting as b
 on p.playerid = b.playerid
-where yearid = 2016
+-- where yearid = 2016
 group by p.playerid
 having max(hr) = (select max(hr)
 from batting
@@ -232,6 +233,7 @@ where yearid = 2016
 group by p.playerid)
 -- yeah ok i get it this shouldnt work omg nevermind it does work it just takes forever????
 -- When i do this it only outputs one player, trumbma01. Let's keep this in mind and remake the code!
+-- Ok I commented off the first yearid thing and it takes way way way longer omg
 
 /* Q11. Is there any correlation between number of wins and team salary? Use data 
 from 2000 and later to answer this question. As you do this analysis, keep in mind 
