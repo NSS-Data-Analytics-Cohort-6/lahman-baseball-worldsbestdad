@@ -80,10 +80,43 @@ order by total_putouts desc
 Round the numbers you report to 2 decimal places. Do the same for home runs 
 per game. Do you see any trends? */
 
+select round(avg(so),2) as Average_Strikeouts,
+round(avg(hr),2) as Average_Homeruns,
+left(cast(yearid as varchar(4)),3) as decade
+-- Need to go back and figure out how to add the '0s' at the end of the decade
+from pitching
+where yearid >= 1920
+group by decade
+order by avg(hr) desc;
+
+-- Looks like this table is already organized by game, so we don't need to group/sort by game I think.
+-- The 1960's, 70's, 80's were the best times to be a pitcher.
+-- Somehow, the 1960's were also the best times to hit homers. 
+-- You would think the Barry Bonds/Sosa/McGuire era would be it
+
 /* Q6. Find the player who had the most success stealing bases in 2016, 
 where success is measured as the percentage of stolen base attempts which 
 are successful. (A stolen base attempt results either in a stolen base or 
 being caught stealing.) Consider only players who attempted at least 20 stolen bases. */
+
+select p.playerid,
+p.namefirst,
+p.namelast,
+sum(sb + cs) as Stealing_attempts,
+round(avg(sb/(sb + cs)),12) as Stealing_success_percentage
+-- This doesn't really work still
+from batting as b
+inner join people as p
+on b.playerid = p.playerid
+where cs is not null
+and sb is not null
+and cs > 0
+and sb > 0
+and yearid = 2016
+group by p.playerid
+having sum(sb + cs) >=20
+order by stealing_success_percentage desc
+-- Jonthan Villar has the most attempts! But the formula shows Jose Altuve as the best percentage?
 
 /* Q7. From 1970 – 2016, what is the largest number of wins for a team 
 that did not win the world series? What is the smallest number of wins 
@@ -93,11 +126,57 @@ determine why this is the case. Then redo your query, excluding the problem
 year. How often from 1970 – 2016 was it the case that a team with the most 
 wins also won the world series? What percentage of the time? */
 
+select name,
+yearid,
+max(w)as most_wins
+from teams
+where yearid between 1970 and 2016
+and WSWin = 'N'
+group by name, yearid
+order by most_wins desc
+-- Most wins for a team that did not win the world series: 116 Wins by Seattle Mariners in 2001
+select name,
+yearid,
+min(w)as least_wins
+from teams
+where yearid between 1970 and 2016
+and WSWin = 'Y'
+group by name, yearid
+order by least_wins asc
+-- Least wins for a team that did win the world series: 63 wins by the LA Dodgers in 1981 
+-- But that's too low, lets redo that
+select sum(g) as total_games,
+yearid
+from teams
+where yearid between 1970 and 2016
+group by yearid 
+order by sum(g) asc
+-- Looks like 1981 was a low year for games i suppose, let's try that other query again.
+select name,
+yearid,
+min(w)as least_wins
+from teams
+where yearid between 1970 and 2016
+and yearid <> 1981
+and WSWin = 'Y'
+group by name, yearid
+order by least_wins asc
+-- Least wins for a team that did win the world series: 83 wins by the St. Louis Cardinals in 2006
+select wswin,
+max(w) as max_wins,
+count(wswin)
+from teams
+group by wswin
+-- Wow I really can't understand how to get this one in there, let's revisit.
+
 /* Q8. Using the attendance figures from the homegames table, find the teams 
 and parks which had the top 5 average attendance per game in 2016 (where average 
 attendance is defined as total attendance divided by number of games). 
 Only consider parks where there were at least 10 games played. Report the park name, 
 team name, and average attendance. Repeat for the lowest 5 average attendance. */
+
+select *
+from homegames
 
 /* Q9. Which managers have won the TSN Manager of the Year award in both the National 
 League (NL) and the American League (AL)? Give their full name and the teams that they 
