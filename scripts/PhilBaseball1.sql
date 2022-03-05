@@ -75,6 +75,7 @@ group by position
 order by total_putouts desc
 -- I hope I got this one right! 58934 Infield PO's, 41424 Battery PO's, 29560 Outfield PO's
 -- Outfield players almost as efficient as infield players for achieving PO's, whatever those are.
+-- window function where you partition by????
 
 /* Q5. Find the average number of strikeouts per game by decade since 1920. 
 Round the numbers you report to 2 decimal places. Do the same for home runs 
@@ -175,17 +176,62 @@ attendance is defined as total attendance divided by number of games).
 Only consider parks where there were at least 10 games played. Report the park name, 
 team name, and average attendance. Repeat for the lowest 5 average attendance. */
 
-select *
+select team,
+park,
+average_attendance
+from 
+	(select team,
+			park,
+			round(avg(attendance/games),0) as average_attendance
+	 		from homegames
+			where year=2016
+			group by team, park) as subquery
+order by average_attendance desc
+limit 5;
+-- The LA Dodgers had the highest 2016 average attendance with 45719 per game. Then SLN, TOR, SFN, and CHN.
+-- This needs to be redone so you can account for 10 games in each park. Go back and think how Excel would do it.
+select park
 from homegames
+group by park
+having count(park)>=10
 
 /* Q9. Which managers have won the TSN Manager of the Year award in both the National 
 League (NL) and the American League (AL)? Give their full name and the teams that they 
 were managing when they won the award. */
 
+select p.namefirst,
+p.namelast,
+am.awardid,
+am.lgid,
+yearid
+from awardsmanagers as am
+left join people as p
+on am.playerid = p.playerid
+where awardid ilike '%TSN Manager%'
+and lgid <> 'ML'
+order by namefirst
+--I feel like i can use a correlated subquery right here? Maybe? We'll retry!
+-- Only one I can find with the above code is Davey Johnson & Jim Leyland, but i have to look through the code to find it.
+-- Need to revise the above code and give the teams they managed, as well as only pull the ones who have one of each!!!
+
 /* Q10. Find all players who hit their career highest number of home runs in 2016. 
 Consider only players who have played in the league for at least 10 years, and who 
 hit at least one home run in 2016. Report the players' first and last names and the 
 number of home runs they hit in 2016. */
+
+select p.playerid,
+max(hr)
+from people as p
+left join batting as b
+on p.playerid = b.playerid
+where yearid = 2016
+group by p.playerid
+having max(hr) = (select max(hr)
+from batting
+where yearid = 2016
+group by p.playerid)
+-- yeah ok i get it this shouldnt work omg nevermind it does work it just takes forever????
+-- When i do this it only outputs one player, trumbma01. Let's keep this in mind and remake the code!
 
 /* Q11. Is there any correlation between number of wins and team salary? Use data 
 from 2000 and later to answer this question. As you do this analysis, keep in mind 
