@@ -160,10 +160,7 @@ group by name, yearid
 order by least_wins asc
 -- Least wins for a team that did win the world series: 83 wins by the St. Louis Cardinals in 2006
 
--- How often from 1970 – 2016 was it the case that a team with the most 
--- wins also won the world series? What percentage of the time?
--- I want a year field and 
-select avg(worldseries)
+/*select avg(worldseries)
 from
 (select case when wswin = 'N' then 0
 else 1 end as worldseries,
@@ -171,7 +168,57 @@ else 1 end as worldseries,
 from teams
 where yearid between 1970 and 2016) as subquery
 
+select wswin,
+round(avg(case when wswin = 'N' then 0
+		else 1 end),2) as winpct
+from teams
+where yearid between 1970 and 2016
+group by wswin*/
+
+/*select max(w),
+yearid,
+wswin
+from teams
+group by yearid, wswin*/
+
+/* select yearid,
+(select
+max(w)
+from teams
+where wswin = 'Y') as winmax,
+max(w) as realwins
+from teams
+group by yearid */
+-- This won't work because correlated subqueries only return one value you dummy
 -- Wow I really can't understand how to get this one in there, let's revisit.
+/*select yearid,
+max(w)
+from teams
+where yearid between 1970 and 2016
+and wswin = 'Y'
+left join 
+group by yearid*/
+
+with winner as (
+select max(w) as winnerwins,
+yearid
+from teams
+where wswin = 'Y'
+group by yearid),
+loser as (
+select max(w) as loserwins,
+yearid
+from teams
+where wswin = 'N'
+group by yearid)
+select
+round(avg(case when winnerwins >= loserwins then 1
+		else 0 end)*100,1) as winpct
+from winner
+inner join loser
+on winner.yearid = loser.yearid
+-- The team with the most wins wins 43.6% of the time
+-- Omg wow if this actually is true i think i did it with a CTE!!!! Wow!!! I'll need to keep looking though
 
 /* Q8. Using the attendance figures from the homegames table, find the teams 
 and parks which had the top 5 average attendance per game in 2016 (where average 
@@ -213,6 +260,29 @@ on am.playerid = p.playerid
 where awardid ilike '%TSN Manager%'
 and lgid <> 'ML'
 order by namefirst
+
+with NL as (
+select *
+from awardsmanagers
+where lgid = 'NL'),
+AL as (
+select *
+from awardsmanagers
+where lgid = 'AL')
+select distinct NL.playerid,
+p.namefirst,
+p.namelast,
+NL.lgid,
+AL.lgid
+from NL
+inner join AL
+on NL.playerid = AL.playerid
+left join people as p
+on NL.playerid = p.playerid
+where NL.awardid ilike '%TSN Manager%'
+and AL.awardid ilike '%TSN Manager%'
+
+
 --I feel like i can use a correlated subquery right here? Maybe? We'll retry!
 -- Only one I can find with the above code is Davey Johnson & Jim Leyland, but i have to look through the code to find it.
 -- Need to revise the above code and give the teams they managed, as well as only pull the ones who have one of each!!!
