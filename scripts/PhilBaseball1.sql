@@ -178,6 +178,25 @@ round(avg(case when winnerwins >= loserwins then 1
 from winner
 inner join loser
 on winner.yearid = loser.yearid
+
+with winner as (
+select max(w) as winnerwins,
+yearid
+from teams
+where wswin = 'Y'
+group by yearid),
+loser as (
+select max(w) as loserwins,
+yearid
+from teams
+where wswin = 'N'
+group by yearid)
+select
+round(avg(case when winnerwins >= loserwins then 1
+		else 0 end)*100,1) as winpct
+from winner
+inner join loser
+on winner.yearid = loser.yearid
 -- The team with the most wins wins 43.6% of the time
 -- Omg wow if this actually is true i think i did it with a CTE!!!! Wow!!! I'll need to keep looking though
 -- Ok looks like abigail got this one with like ~20% using 
@@ -191,18 +210,14 @@ Only consider parks where there were at least 10 games played. Report the park n
 team name, and average attendance. Repeat for the lowest 5 average attendance. */
 
 select team,
-subquery.park,
-average_attendance
-from 
-	(select team,
-			park,
-			round(avg(attendance/games),0) as average_attendance
-	 		from homegames
-			where year=2016
-			group by team, park) as subquery
-inner join parks as p
-on subquery.park = p.park
-order by average_attendance desc
+park,
+attendance,
+attendance/games as avg_attendance,
+games
+from homegames
+where games >= 10
+and year = 2016
+order by attendance desc
 limit 5;
 /*
 SELECT 
@@ -288,6 +303,20 @@ inner join homers
 on b.playerid = homers.playerid
 where yearid = 2016
 group by b.playerid
+
+with z as(
+select max(hr) over(partition by playerid) as twentysixteenhomers
+from batting
+where yearid = 2016
+group by playerid)
+select b.playerid,
+z.twentysixteenhomers,
+max(b.hr)
+from batting as b
+inner join z
+on b.playerid = z.playerid
+group by b.playerid
+having count(b.playerid)>=10
 
 
 -- yeah ok i get it this shouldnt work omg nevermind it does work it just takes forever????
