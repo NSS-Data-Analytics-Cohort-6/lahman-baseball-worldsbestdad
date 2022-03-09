@@ -81,44 +81,39 @@ order by total_putouts desc
 Round the numbers you report to 2 decimal places. Do the same for home runs 
 per game. Do you see any trends? */
 
-select round(avg(so),2) as Average_Strikeouts,
-round(avg(hr),2) as Average_Homeruns,
-left(cast(yearid as varchar(4)),3) as decade
--- Need to go back and figure out how to add the '0s' at the end of the decade
-from pitching
+select round(avg(hr),1) as Average_Homeruns,
+round(avg(so),1) as Average_Strikeouts,
+concat(left(cast(yearid as varchar(4)),3), '0s') as decade
+from teams
 where yearid >= 1920
 group by decade
-order by avg(hr) desc;
+order by avg(so) desc;
 
--- Looks like this table is already organized by game, so we don't need to group/sort by game I think.
--- The 1960's, 70's, 80's were the best times to be a pitcher.
--- Somehow, the 1960's were also the best times to hit homers. 
--- You would think the Barry Bonds/Sosa/McGuire era would be it
--- Amanda says go back to this one use the teams table!!
+-- Bonds, Sosa, and McGuire really shaped the homerun era, huh? 2000's was the time to do steroids for sure
+-- 2010's was the time they figured out using different pitchers all the time is pretty effective
 
 /* Q6. Find the player who had the most success stealing bases in 2016, 
 where success is measured as the percentage of stolen base attempts which 
 are successful. (A stolen base attempt results either in a stolen base or 
 being caught stealing.) Consider only players who attempted at least 20 stolen bases. */
 
-select p.playerid,
-p.namefirst,
+select p.namefirst,
 p.namelast,
-sum(sb + cs) as Stealing_attempts,
-round(avg(sb/(sb + cs)),12) as Stealing_success_percentage
+sum(b.sb + b.cs) as Stealing_attempts,
+round((sum(b.sb) / (sum(b.sb) + sum(b.cs)) * 100),1) AS stealing_success
 -- This doesn't really work still
-from batting as b
-inner join people as p
+from people as p
+inner join batting as b
 on b.playerid = p.playerid
-where cs is not null
-and sb is not null
-and cs > 0
-and sb > 0
-and yearid = 2016
-group by p.playerid
+where yearid = 2016
+and b.sb is not null
+and b.cs is not null
+group by p.playerid, p.namefirst, p.namelast
 having sum(sb + cs) >=20
-order by stealing_success_percentage desc
+order by stealing_success desc
 -- Jonthan Villar has the most attempts! But the formula shows Jose Altuve as the best percentage?
+-- This code stull looks bad and it's wrong i think.
+
 
 /* Q7. From 1970 – 2016, what is the largest number of wins for a team 
 that did not win the world series? What is the smallest number of wins 
@@ -164,11 +159,18 @@ and WSWin = 'Y'
 group by name, yearid
 order by least_wins asc
 -- Least wins for a team that did win the world series: 83 wins by the St. Louis Cardinals in 2006
-select wswin,
-max(w) as max_wins,
-count(wswin)
+
+-- How often from 1970 – 2016 was it the case that a team with the most 
+-- wins also won the world series? What percentage of the time?
+-- I want a year field and 
+select avg(worldseries)
+from
+(select case when wswin = 'N' then 0
+else 1 end as worldseries,
+ teamid
 from teams
-group by wswin
+where yearid between 1970 and 2016) as subquery
+
 -- Wow I really can't understand how to get this one in there, let's revisit.
 
 /* Q8. Using the attendance figures from the homegames table, find the teams 
