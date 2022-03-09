@@ -160,45 +160,6 @@ group by name, yearid
 order by least_wins asc
 -- Least wins for a team that did win the world series: 83 wins by the St. Louis Cardinals in 2006
 
-/*select avg(worldseries)
-from
-(select case when wswin = 'N' then 0
-else 1 end as worldseries,
- teamid
-from teams
-where yearid between 1970 and 2016) as subquery
-
-select wswin,
-round(avg(case when wswin = 'N' then 0
-		else 1 end),2) as winpct
-from teams
-where yearid between 1970 and 2016
-group by wswin*/
-
-/*select max(w),
-yearid,
-wswin
-from teams
-group by yearid, wswin*/
-
-/* select yearid,
-(select
-max(w)
-from teams
-where wswin = 'Y') as winmax,
-max(w) as realwins
-from teams
-group by yearid */
--- This won't work because correlated subqueries only return one value you dummy
--- Wow I really can't understand how to get this one in there, let's revisit.
-/*select yearid,
-max(w)
-from teams
-where yearid between 1970 and 2016
-and wswin = 'Y'
-left join 
-group by yearid*/
-
 with winner as (
 select max(w) as winnerwins,
 yearid
@@ -219,6 +180,9 @@ inner join loser
 on winner.yearid = loser.yearid
 -- The team with the most wins wins 43.6% of the time
 -- Omg wow if this actually is true i think i did it with a CTE!!!! Wow!!! I'll need to keep looking though
+-- Ok looks like abigail got this one with like ~20% using 
+-- https://stackoverflow.com/questions/7745609/sql-select-only-rows-with-max-value-on-a-column
+
 
 /* Q8. Using the attendance figures from the homegames table, find the teams 
 and parks which had the top 5 average attendance per game in 2016 (where average 
@@ -227,7 +191,7 @@ Only consider parks where there were at least 10 games played. Report the park n
 team name, and average attendance. Repeat for the lowest 5 average attendance. */
 
 select team,
-park,
+subquery.park,
 average_attendance
 from 
 	(select team,
@@ -236,30 +200,47 @@ from
 	 		from homegames
 			where year=2016
 			group by team, park) as subquery
+inner join parks as p
+on subquery.park = p.park
 order by average_attendance desc
 limit 5;
+/*
+SELECT 
+	hg.year,
+	hg.team,
+	hg.park,
+	hg.games,
+	hg.attendance,
+	hg.attendance/hg.games AS avg_attendance
+FROM homegames AS hg
+WHERE hg.year = 2016
+	AND hg.games > 10
+GROUP BY 
+	hg.year,
+	hg.team,
+	hg.park,
+	hg.games,
+	hg.attendance
+ORDER BY 
+	avg_attendance DESC;
+*/
+-- Above is katie's code. Look at it to fix yours
 -- The LA Dodgers had the highest 2016 average attendance with 45719 per game. Then SLN, TOR, SFN, and CHN.
 -- This needs to be redone so you can account for 10 games in each park. Go back and think how Excel would do it.
+with parks as (
 select park
 from homegames
-group by park
-having count(park)>=10
+having count(park)>=10)
+select parks.park,
+avg(attendance) as avg_att
+from homegames as h
+inner join parks
+on parks.park = h.park
+group by parks.park
 
 /* Q9. Which managers have won the TSN Manager of the Year award in both the National 
 League (NL) and the American League (AL)? Give their full name and the teams that they 
 were managing when they won the award. */
-
-select p.namefirst,
-p.namelast,
-am.awardid,
-am.lgid,
-yearid
-from awardsmanagers as am
-left join people as p
-on am.playerid = p.playerid
-where awardid ilike '%TSN Manager%'
-and lgid <> 'ML'
-order by namefirst
 
 with NL as (
 select *
@@ -269,21 +250,23 @@ AL as (
 select *
 from awardsmanagers
 where lgid = 'AL')
-select distinct NL.playerid,
+select NL.playerid,
 p.namefirst,
 p.namelast,
 NL.lgid,
-AL.lgid
+AL.lgid,
+NL.yearid,
+m.teamid
 from NL
 inner join AL
 on NL.playerid = AL.playerid
 left join people as p
 on NL.playerid = p.playerid
+left join managers as m
+on p.playerid = m.playerid and NL.yearid = m.yearid
 where NL.awardid ilike '%TSN Manager%'
 and AL.awardid ilike '%TSN Manager%'
 
-
---I feel like i can use a correlated subquery right here? Maybe? We'll retry!
 -- Only one I can find with the above code is Davey Johnson & Jim Leyland, but i have to look through the code to find it.
 -- Need to revise the above code and give the teams they managed, as well as only pull the ones who have one of each!!!
 
@@ -292,17 +275,21 @@ Consider only players who have played in the league for at least 10 years, and w
 hit at least one home run in 2016. Report the players' first and last names and the 
 number of home runs they hit in 2016. */
 
+with homers as(
 select p.playerid,
-max(hr)
+max(b.hr) over(partition by p.playerid) as maxhomers
 from people as p
 left join batting as b
-on p.playerid = b.playerid
--- where yearid = 2016
-group by p.playerid
-having max(hr) = (select max(hr)
-from batting
+on p.playerid = b.playerid)
+select homers.maxhomers,
+max(b.hr) as maxhomerstwentysixteen
+from batting as b
+inner join homers
+on b.playerid = homers.playerid
 where yearid = 2016
-group by p.playerid)
+group by b.playerid
+
+
 -- yeah ok i get it this shouldnt work omg nevermind it does work it just takes forever????
 -- When i do this it only outputs one player, trumbma01. Let's keep this in mind and remake the code!
 -- Ok I commented off the first yearid thing and it takes way way way longer omg
