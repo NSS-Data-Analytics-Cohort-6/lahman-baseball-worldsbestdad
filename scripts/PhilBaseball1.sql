@@ -53,6 +53,7 @@ where s1.schoolname ilike '%vander%'
 group by cp.playerid, p.namefirst, p.namelast
 order by sum(s2.salary) desc
 -- David Price earned $245,553,888 playing baseball??? That seems insane but good for him
+-- go back and redo this bad boy!!!
 
 /* Q4. Using the fielding table, group players into three groups based 
 on their position: label players with position OF as "Outfield", those 
@@ -99,8 +100,9 @@ being caught stealing.) Consider only players who attempted at least 20 stolen b
 
 select p.namefirst,
 p.namelast,
-sum(b.sb + b.cs) as Stealing_attempts,
-round((sum(b.sb) / (sum(b.sb) + sum(b.cs)) * 100),1) AS stealing_success
+sum(b.sb) + sum(b.cs) as Stealing_attempts,
+round((sum(b.sb) / (sum(b.sb) + sum(b.cs)) * 100.0),1) AS stealing_success,
+CONCAT(ROUND(100.0 * b.sb/(b.sb+b.cs), 0), '%') AS success_stealing_perc
 -- This doesn't really work still
 from people as p
 inner join batting as b
@@ -109,11 +111,40 @@ where yearid = 2016
 and b.sb is not null
 and b.cs is not null
 group by p.playerid, p.namefirst, p.namelast
-having sum(sb + cs) >=20
+having sum(sb) + sum (cs) >=20
 order by stealing_success desc
 -- Jonthan Villar has the most attempts! But the formula shows Jose Altuve as the best percentage?
--- This code stull looks bad and it's wrong i think.
+-- This code still looks bad and it's wrong i think.
+select p.namefirst, 
+p.namelast, 
+b.sb AS stolen_bases, 
+b.cs AS caught_stealing, 
+b.sb + b.cs AS stealing_attempts,
+concat(round(100.0 * b.sb/(b.sb+b.cs), 1), '%') AS success_stealing_perc
+from people as p
+left join batting as b
+on p.playerid = b.playerid
+where b.yearid = 2016 and b.sb + b.cs > 20
+order by success_stealing_perc desc;
 
+/*
+select
+	p.namefirst,
+	p.namelast,
+	p.playerid,
+	b.cs,
+	sum(b.sb) as sb,
+	sum(b.sb + b.cs) as att_sb,
+	((sum(b.sb))/(nullif(sum(b.sb + b.cs),0)))*100.00  as sb_succ_rate
+from people as p 
+join batting as b 
+on p.playerid = b.playerid
+where 
+	yearid = '2016'
+group by p.namefirst, p.namelast, p.playerid, b.sb, b.cs
+order by b.sb desc;
+*/
+--Andrew's code, trying to walk through it with him :)
 
 /* Q7. From 1970 – 2016, what is the largest number of wins for a team 
 that did not win the world series? What is the smallest number of wins 
@@ -173,31 +204,13 @@ from teams
 where wswin = 'N'
 group by yearid)
 select
-round(avg(case when winnerwins >= loserwins then 1
+round(avg(case when winnerwins > loserwins then 1
 		else 0 end)*100,1) as winpct
 from winner
 inner join loser
 on winner.yearid = loser.yearid
 
-with winner as (
-select max(w) as winnerwins,
-yearid
-from teams
-where wswin = 'Y'
-group by yearid),
-loser as (
-select max(w) as loserwins,
-yearid
-from teams
-where wswin = 'N'
-group by yearid)
-select
-round(avg(case when winnerwins >= loserwins then 1
-		else 0 end)*100,1) as winpct
-from winner
-inner join loser
-on winner.yearid = loser.yearid
--- The team with the most wins wins 43.6% of the time
+-- The team with the most wins wins 38.5% of the time
 -- Omg wow if this actually is true i think i did it with a CTE!!!! Wow!!! I'll need to keep looking though
 -- Ok looks like abigail got this one with like ~20% using 
 -- https://stackoverflow.com/questions/7745609/sql-select-only-rows-with-max-value-on-a-column
@@ -217,41 +230,11 @@ games
 from homegames
 where games >= 10
 and year = 2016
-order by attendance desc
-limit 5;
-/*
-SELECT 
-	hg.year,
-	hg.team,
-	hg.park,
-	hg.games,
-	hg.attendance,
-	hg.attendance/hg.games AS avg_attendance
-FROM homegames AS hg
-WHERE hg.year = 2016
-	AND hg.games > 10
-GROUP BY 
-	hg.year,
-	hg.team,
-	hg.park,
-	hg.games,
-	hg.attendance
-ORDER BY 
-	avg_attendance DESC;
-*/
--- Above is katie's code. Look at it to fix yours
+group by team, park, attendance, games
+order by avg_attendance desc;
+
 -- The LA Dodgers had the highest 2016 average attendance with 45719 per game. Then SLN, TOR, SFN, and CHN.
 -- This needs to be redone so you can account for 10 games in each park. Go back and think how Excel would do it.
-with parks as (
-select park
-from homegames
-having count(park)>=10)
-select parks.park,
-avg(attendance) as avg_att
-from homegames as h
-inner join parks
-on parks.park = h.park
-group by parks.park
 
 /* Q9. Which managers have won the TSN Manager of the Year award in both the National 
 League (NL) and the American League (AL)? Give their full name and the teams that they 
@@ -282,6 +265,16 @@ on p.playerid = m.playerid and NL.yearid = m.yearid
 where NL.awardid ilike '%TSN Manager%'
 and AL.awardid ilike '%TSN Manager%'
 
+/*
+SELECT playerid, yearid, COUNT(case WHEN awardid = 'BBWAA Manager of the Year' AND lgid = 'AL' THEN 1  else 0 END) AS alaward, 
+COUNT(case WHEN awardid = 'BBWAA Manager of the Year' AND lgid = 'NL' THEN 1 else 0 END) AS nlaward
+FROM awardsmanagers
+GROUP BY playerid, yearid
+having COUNT(case WHEN awardid = 'BBWAA Manager of the Year' AND lgid = 'AL' THEN 1 else 0 END) = 1 AND COUNT(case WHEN awardid = 'BBWAA Manager of the Year' AND lgid = 'NL' THEN 1 else 0 END) = 1
+ORDER BY yearid ASC
+*/
+-- Larry's code, trying to get it functional with him
+
 -- Only one I can find with the above code is Davey Johnson & Jim Leyland, but i have to look through the code to find it.
 -- Need to revise the above code and give the teams they managed, as well as only pull the ones who have one of each!!!
 
@@ -291,42 +284,36 @@ hit at least one home run in 2016. Report the players' first and last names and 
 number of home runs they hit in 2016. */
 
 with homers as(
-select p.playerid,
-max(b.hr) over(partition by p.playerid) as maxhomers
-from people as p
-left join batting as b
-on p.playerid = b.playerid)
-select homers.maxhomers,
-max(b.hr) as maxhomerstwentysixteen
-from batting as b
-inner join homers
-on b.playerid = homers.playerid
-where yearid = 2016
-group by b.playerid
-
-with z as(
-select max(hr) over(partition by playerid) as twentysixteenhomers
+select playerid,
+max(hr) as twentysixteenhr
 from batting
 where yearid = 2016
 group by playerid)
 select b.playerid,
-z.twentysixteenhomers,
-max(b.hr)
+concat(p.namefirst, ' ', p.namelast) as namefull,
+max(hr) as actualmaxhomers,
+twentysixteenhr
 from batting as b
-inner join z
-on b.playerid = z.playerid
-group by b.playerid
-having count(b.playerid)>=10
-
-
--- yeah ok i get it this shouldnt work omg nevermind it does work it just takes forever????
--- When i do this it only outputs one player, trumbma01. Let's keep this in mind and remake the code!
--- Ok I commented off the first yearid thing and it takes way way way longer omg
+left join homers
+on b.playerid = homers.playerid
+inner join people as p
+on b.playerid = p.playerid
+where twentysixteenhr > 0
+group by b.playerid, twentysixteenhr, namefull
+having max(hr) = twentysixteenhr
+and max(yearid) - min(yearid) >= 10
+order by max(b.hr) desc
+-- OMG I did it!!! We got the right answer????
+-- 8 Players
 
 /* Q11. Is there any correlation between number of wins and team salary? Use data 
 from 2000 and later to answer this question. As you do this analysis, keep in mind 
 that salaries across the whole league tend to increase together, so you may want to 
 look on a year-by-year basis. */
+
+select *
+from teams
+where yearid = 2000
 
 /* Q12. In this question, you will explore the connection between number of wins and attendance.
 
@@ -342,4 +329,3 @@ this claim and present evidence to either support or dispute this claim.
 First, determine just how rare left-handed pitchers are compared with right-handed pitchers. 
 Are left-handed pitchers more likely to win the Cy Young Award? Are they more 
 likely to make it into the hall of fame? */
-
