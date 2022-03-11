@@ -314,6 +314,7 @@ look on a year-by-year basis. */
 select *
 from teams
 where yearid = 2000
+-- oops i barely did anything but i guess it's still code
 
 /* Q12. In this question, you will explore the connection between number of wins and attendance.
 
