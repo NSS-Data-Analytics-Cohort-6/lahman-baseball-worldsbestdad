@@ -41,7 +41,7 @@ money in the majors? */
 select cp.playerid,
 p.namefirst,
 p.namelast,
-sum(s2.salary)
+sum(s2.salary) as total_earnings
 from collegeplaying as cp
 inner join schools as s1
 on cp.schoolid = s1.schoolid
@@ -51,6 +51,7 @@ inner join salaries as s2
 on p.playerid = s2.playerid
 where s1.schoolname ilike '%vander%'
 group by cp.playerid, p.namefirst, p.namelast
+having sum(s2.salary) <= 100000000
 order by sum(s2.salary) desc
 -- David Price earned $245,553,888 playing baseball??? That seems insane but good for him
 -- go back and redo this bad boy!!!
