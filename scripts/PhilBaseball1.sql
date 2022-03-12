@@ -38,23 +38,23 @@ total salary they earned in the major leagues. Sort this list in descending
 order by the total salary earned. Which Vanderbilt player earned the most 
 money in the majors? */
 
-select cp.playerid,
+select p.playerid,
 p.namefirst,
 p.namelast,
-sum(s2.salary) as total_earnings
-from collegeplaying as cp
-inner join schools as s1
-on cp.schoolid = s1.schoolid
-inner join people as p
-on cp.playerid = p.playerid
-inner join salaries as s2
-on p.playerid = s2.playerid
-where s1.schoolname ilike '%vander%'
-group by cp.playerid, p.namefirst, p.namelast
-having sum(s2.salary) <= 100000000
-order by sum(s2.salary) desc
+sum(s.salary)
+from people as p
+left join salaries as s
+on p.playerid = s.playerid
+inner join (select distinct playerid
+from collegeplaying
+where schoolid ilike '%vand%') as v
+on v.playerid = p.playerid
+where s.salary is not null
+group by p.playerid, p.namefirst, p.namelast
+order by sum(s.salary) desc
 -- David Price earned $245,553,888 playing baseball??? That seems insane but good for him
--- go back and redo this bad boy!!!
+-- go back and redo this bad boy!!! You should be getting like $81 milly or something, try it again with a subquery and usings
+-- college playing has him playing for 3 years, so his salary is multiplied by 3??? Yowza that's bonkers.
 
 /* Q4. Using the fielding table, group players into three groups based 
 on their position: label players with position OF as "Outfield", those 
@@ -83,8 +83,8 @@ order by total_putouts desc
 Round the numbers you report to 2 decimal places. Do the same for home runs 
 per game. Do you see any trends? */
 
-select round(avg(hr),1) as Average_Homeruns,
-round(avg(so),1) as Average_Strikeouts,
+select round(avg((hr/(g/2),1)*1.0)) as Average_Homeruns,
+round(avg((so/(g/2),1)*1.0)) as Average_Strikeouts,
 concat(left(cast(yearid as varchar(4)),3), '0s') as decade
 from teams
 where yearid >= 1920
@@ -93,6 +93,8 @@ order by avg(so) desc;
 
 -- Bonds, Sosa, and McGuire really shaped the homerun era, huh? 2000's was the time to do steroids for sure
 -- 2010's was the time they figured out using different pitchers all the time is pretty effective
+-- A better way to do the decade is yearid/10*10 since it remove the remainder when it's an integer, neat!
+-- Oh no it should be by game not by decade LOL
 
 /* Q6. Find the player who had the most success stealing bases in 2016, 
 where success is measured as the percentage of stolen base attempts which 
@@ -127,7 +129,7 @@ left join batting as b
 on p.playerid = b.playerid
 where b.yearid = 2016 and b.sb + b.cs > 20
 order by success_stealing_perc desc;
-
+-- Ok i think this one is correct
 /*
 select
 	p.namefirst,
@@ -205,16 +207,19 @@ from teams
 where wswin = 'N'
 group by yearid)
 select
-round(avg(case when winnerwins > loserwins then 1
-		else 0 end)*100,1) as winpct
+round(avg(case when winnerwins >= loserwins then 1
+		else 0 end)*100.0,1) as winpct
 from winner
 inner join loser
 on winner.yearid = loser.yearid
+where winner.yearid between 1970 and 2016
 
--- The team with the most wins wins 38.5% of the time
+-- The team with the most wins wins 26.1% of the time
 -- Omg wow if this actually is true i think i did it with a CTE!!!! Wow!!! I'll need to keep looking though
 -- Ok looks like abigail got this one with like ~20% using 
 -- https://stackoverflow.com/questions/7745609/sql-select-only-rows-with-max-value-on-a-column
+-- It should be 12 teams that won who had the most wins that season during that time period, so might need to redo this one
+-- Oh nevermind i just forgot to add the between 1970 and 2016
 
 
 /* Q8. Using the attendance figures from the homegames table, find the teams 
@@ -257,7 +262,7 @@ AL.lgid,
 NL.yearid,
 m.teamid
 from NL
-inner join AL
+left join AL
 on NL.playerid = AL.playerid
 left join people as p
 on NL.playerid = p.playerid
@@ -278,6 +283,7 @@ ORDER BY yearid ASC
 
 -- Only one I can find with the above code is Davey Johnson & Jim Leyland, but i have to look through the code to find it.
 -- Need to revise the above code and give the teams they managed, as well as only pull the ones who have one of each!!!
+-- Could you do a AL then NL winners then intersect??
 
 /* Q10. Find all players who hit their career highest number of home runs in 2016. 
 Consider only players who have played in the league for at least 10 years, and who 
